@@ -21,13 +21,14 @@ data "aws_ami" "ubuntu" {
 
 data "template_file" "ca_vars" {
   template = "${file("${path.root}/files/vars.tpl")}"
+
   vars {
-    cert_key_country = "${var.cert_key_country}"
+    cert_key_country  = "${var.cert_key_country}"
     cert_key_province = "${var.cert_key_province}"
-    cert_key_city = "${var.cert_key_city}"
-    cert_key_org = "${var.cert_key_org}"
-    cert_key_email = "${var.cert_key_email}"
-    cert_key_ou = "${var.cert_key_ou}"
+    cert_key_city     = "${var.cert_key_city}"
+    cert_key_org      = "${var.cert_key_org}"
+    cert_key_email    = "${var.cert_key_email}"
+    cert_key_ou       = "${var.cert_key_ou}"
   }
 }
 
@@ -95,8 +96,8 @@ resource "null_resource" "chmod" {
 }
 
 resource "aws_instance" "vpn" {
-  ami           = "${data.aws_ami.ubuntu.id}"
-  instance_type = "${var.instance_size}"
+  ami                    = "${data.aws_ami.ubuntu.id}"
+  instance_type          = "${var.instance_size}"
   vpc_security_group_ids = ["${aws_security_group.vpn_security_group.id}"]
 
   key_name = "${aws_key_pair.generated.key_name}"
@@ -108,7 +109,8 @@ resource "aws_instance" "vpn" {
   connection {
     user        = "ubuntu"
     private_key = "${tls_private_key.generated.private_key_pem}"
-    timeout = "2m"
+    timeout     = "5m"
+    agent       = false
   }
 
   provisioner "remote-exec" {
@@ -116,42 +118,42 @@ resource "aws_instance" "vpn" {
       "sudo apt-get update -y",
       "sudo apt-get upgrade -y",
       "sudo apt-get install -y openvpn easy-rsa",
-      "mkdir -p ~/terraform/files"
+      "mkdir -p ~/terraform/files",
     ]
   }
 
   provisioner "file" {
-    content = "${data.template_file.ca_vars.rendered}"
+    content     = "${data.template_file.ca_vars.rendered}"
     destination = "~/terraform/files/vars"
   }
 
   provisioner "file" {
-    source = "files/before.rules"
+    source      = "files/before.rules"
     destination = "~/terraform/files/before.rules"
   }
 
   provisioner "file" {
-    source = "files/make_config.sh"
+    source      = "files/make_config.sh"
     destination = "~/terraform/files/make_config.sh"
   }
 
   provisioner "file" {
-    source = "files/server.conf"
+    source      = "files/server.conf"
     destination = "~/terraform/files/server.conf"
   }
 
   provisioner "file" {
-    source = "files/sysctl.conf"
+    source      = "files/sysctl.conf"
     destination = "~/terraform/files/sysctl.conf"
   }
 
   provisioner "file" {
-    source = "files/ufw"
+    source      = "files/ufw"
     destination = "~/terraform/files/ufw"
   }
 
   provisioner "file" {
-    source = "files/client.conf.tpl"
+    source      = "files/client.conf.tpl"
     destination = "~/terraform/files/client.conf.tpl"
   }
 
@@ -187,7 +189,7 @@ resource "aws_instance" "vpn" {
       "sudo chmod 700 ~/client-configs/make_config.sh",
       "cd ~/client-configs",
       "sudo ./make_config.sh client1",
-      "sudo reboot"
+      "(sleep 2 && reboot)&",
     ]
   }
 }
